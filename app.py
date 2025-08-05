@@ -1,39 +1,40 @@
 import streamlit as st
 import pandas as pd
+import folium
+from streamlit_folium import folium_static
 
-# Título
-st.title("Alianzas Internacionales")
+# Título de la app
+st.title("Mapa Interactivo de Alianzas Internacionales")
 
 # Cargar datos
 df = pd.read_csv("alianzas.csv")
 
-# Eliminar filas vacías y asegurar tipos de datos
-df = df.dropna(subset=['País', 'Año'])
-df['País'] = df['País'].astype(str)
-df['Año'] = df['Año'].astype(str)
+# Limpiar datos faltantes si es necesario
+df = df.dropna(subset=["Latitud", "Longitud"])
 
-# Obtener listas únicas para los filtros
-paises = sorted(df['País'].unique().tolist())
-anios = sorted(df['Año'].unique().tolist())
+# Crear el mapa centrado en coordenadas medias
+mapa = folium.Map(location=[0, 0], zoom_start=2)
 
-# Filtros en la barra lateral
-st.sidebar.header("Filtros")
-pais_sel = st.sidebar.multiselect("País", options=paises, default=paises)
-anio_sel = st.sidebar.multiselect("Año", options=anios, default=anios)
+# Añadir marcadores
+for i, row in df.iterrows():
+    info_html = f"""
+    <b>Nombre:</b> {row['Nombre']}<br>
+    <b>País:</b> {row['País']}<br>
+    <b>Ciudad:</b> {row['Ciudad']}<br>
+    <b>Tipo de Alianza:</b> {row['Tipo Alianza']}<br>
+    <b>Año:</b> {row['Año']}<br>
+    <b>Descripción:</b> {row['Descripción']}<br>
+    <b>Link:</b> <a href="{row['Link Institución']}" target="_blank">Sitio Web</a><br>
+    <b>Contacto 1:</b> {row['Contacto 1']}<br>
+    <b>Contacto 2:</b> {row['Contacto 2']}
+    """
 
-# Filtrar DataFrame según selección
-df_filtrado = df[df['País'].isin(pais_sel) & df['Año'].isin(anio_sel)]
+    folium.Marker(
+        location=[row['Latitud'], row['Longitud']],
+        popup=folium.Popup(info_html, max_width=400),
+        tooltip=row['Nombre'],
+        icon=folium.Icon(color='blue', icon='briefcase', prefix='fa')
+    ).add_to(mapa)
 
-# Mostrar resultados
-st.subheader("Resultados filtrados")
-st.write(f"Se encontraron {len(df_filtrado)} registros.")
-st.dataframe(df_filtrado)
-
-# Descargar resultados
-st.download_button(
-    label="📥 Descargar resultados filtrados",
-    data=df_filtrado.to_csv(index=False),
-    file_name="alianzas_filtradas.csv",
-    mime="text/csv"
-)
-
+# Mostrar el mapa en Streamlit
+folium_static(mapa)
