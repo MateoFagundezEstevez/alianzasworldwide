@@ -12,18 +12,26 @@ st.title("🌍 Mapa Interactivo de Alianzas Internacionales")
 df = pd.read_csv("alianzas.csv")
 df = df.dropna(subset=["Latitud", "Longitud"])
 
-# Selección de vista
+# Filtro por Tipo de Alianza
+tipos_disponibles = df["Tipo Alianza"].dropna().unique()
+tipo_seleccionado = st.multiselect("Filtrar por tipo de alianza:", opciones := sorted(tipos_disponibles), default=list(tipos_disponibles))
+
+# Filtrar dataframe según selección
+df_filtrado = df[df["Tipo Alianza"].isin(tipo_seleccionado)]
+
+# Checkbox para vista agrupada
 modo_agrupado = st.checkbox("Ver marcadores agrupados", value=True)
 
-# Crear mapa
-mapa = folium.Map(location=[df["Latitud"].mean(), df["Longitud"].mean()],
+# Crear mapa centrado
+mapa = folium.Map(location=[df_filtrado["Latitud"].mean(), df_filtrado["Longitud"].mean()],
                   zoom_start=2,
                   tiles="CartoDB positron")
 
 if modo_agrupado:
     marker_cluster = MarkerCluster().add_to(mapa)
 
-for _, row in df.iterrows():
+# Agregar marcadores filtrados
+for _, row in df_filtrado.iterrows():
     html = f"""
     <div style="font-size: 14px;">
         <strong>🏛 {row['Nombre']}</strong><br>
