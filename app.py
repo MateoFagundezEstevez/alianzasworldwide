@@ -1,62 +1,39 @@
 import streamlit as st
 import pandas as pd
-import folium
-from streamlit_folium import folium_static
-from folium.plugins import MarkerCluster
 
-# Configuración de la página
-st.set_page_config(page_title="Mapa de Alianzas Internacionales", layout="wide")
-st.title("🌐 Mapa Interactivo de Alianzas Internacionales")
+# Título
+st.title("Alianzas Internacionales")
 
-# Cargar datos desde archivo CSV
+# Cargar datos
 df = pd.read_csv("alianzas.csv")
-df = df.dropna(subset=["Latitud", "Longitud"])
 
-# Sidebar con filtros
-st.sidebar.header("🔍 Filtrar por:")
+# Eliminar filas vacías y asegurar tipos de datos
+df = df.dropna(subset=['País', 'Año'])
+df['País'] = df['País'].astype(str)
+df['Año'] = df['Año'].astype(str)
 
-paises = df['País'].dropna().unique().tolist()
-anios = sorted(df['Año'].dropna().unique().tolist())
+# Obtener listas únicas para los filtros
+paises = sorted(df['País'].unique().tolist())
+anios = sorted(df['Año'].unique().tolist())
 
-pais_sel = st.sidebar.multiselect("País", opciones=paises, default=paises)
-anio_sel = st.sidebar.multiselect("Año", opciones=anios, default=anios)
+# Filtros en la barra lateral
+st.sidebar.header("Filtros")
+pais_sel = st.sidebar.multiselect("País", options=paises, default=paises)
+anio_sel = st.sidebar.multiselect("Año", options=anios, default=anios)
 
-# Filtrar datos según selección
-df_filtrado = df[(df['País'].isin(pais_sel)) & (df['Año'].isin(anio_sel))]
+# Filtrar DataFrame según selección
+df_filtrado = df[df['País'].isin(pais_sel) & df['Año'].isin(anio_sel)]
 
-# Centrar mapa en promedio de coordenadas
-lat_media = df_filtrado["Latitud"].mean()
-lon_media = df_filtrado["Longitud"].mean()
+# Mostrar resultados
+st.subheader("Resultados filtrados")
+st.write(f"Se encontraron {len(df_filtrado)} registros.")
+st.dataframe(df_filtrado)
 
-# Crear mapa con estilo moderno
-mapa = folium.Map(location=[lat_media, lon_media], zoom_start=2, tiles="CartoDB dark_matter")
+# Descargar resultados
+st.download_button(
+    label="📥 Descargar resultados filtrados",
+    data=df_filtrado.to_csv(index=False),
+    file_name="alianzas_filtradas.csv",
+    mime="text/csv"
+)
 
-# Crear cluster de marcadores
-marker_cluster = MarkerCluster().add_to(mapa)
-
-# Añadir marcadores al cluster
-for i, row in df_filtrado.iterrows():
-    popup_html = f"""
-    <div style="width: 250px;">
-        <strong>{row['Nombre']}</strong><br>
-        📍 <b>{row['Ciudad']}, {row['País']}</b><br>
-        📅 <b>Año:</b> {row['Año']}<br>
-        🤝 <b>Tipo:</b> {row['Tipo Alianza']}<br><br>
-        {row['Descripción']}<br><br>
-        🔗 <a href="{row['Link Institución']}" target="_blank">Sitio Web</a><br><br>
-        ✉️ <b>Contacto 1:</b> {row['Contacto 1']}<br>
-        ✉️ <b>Contacto 2:</b> {row['Contacto 2']}
-    </div>
-    """
-    folium.Marker(
-        location=[row['Latitud'], row['Longitud']],
-        popup=folium.Popup(popup_html, max_width=300),
-        tooltip=row['Nombre'],
-        icon=folium.Icon(color='green', icon='globe', prefix='fa')
-    ).add_to(marker_cluster)
-
-# Mostrar mapa en la app
-folium_static(mapa, width=1200, height=650)
-
-# Mostrar cantidad de alianzas activas filtradas
-st.markdown(f"🔎 <b>{len(df_filtrado)} alianzas</b> encontradas con los filtros seleccionados.", unsafe_allow_html=True)
